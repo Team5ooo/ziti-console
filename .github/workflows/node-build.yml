@@ -25,6 +25,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare local library path
+        run: |
+          mkdir -p dist/ziti-console-lib
+          cat > dist/ziti-console-lib/package.json <<'EOF'
+          {
+            "name": "ziti-console-lib",
+            "version": "0.0.0"
+          }
+          EOF
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
