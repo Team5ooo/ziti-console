@@ -48,6 +48,7 @@ export class ServicesPageService extends ListPageServiceClass {
 
     override CSV_COLUMNS = [
         {label: 'Name', path: 'name'},
+        {label: 'Tags', path: 'tags'},
         {label: 'ID', path: 'id'},
         {label: 'Encryption Required', path: 'encryptionRequired'},
         {label: 'Terminator Strategy', path: 'terminatorStrategy'},
@@ -103,6 +104,16 @@ export class ServicesPageService extends ListPageServiceClass {
             return roles;
         }
         const self = this;
+        const tagsRenderer = (row) => {
+            let tags = '';
+            const tagObj = row?.data?.tags || {};
+            Object.entries(tagObj).forEach(([key, value]) => {
+                const formattedValue = typeof value === 'object' ? JSON.stringify(value) : `${value}`;
+                const label = `${key}=${formattedValue}`;
+                tags += '<div class="hashtag">' + label + '</div>';
+            });
+            return tags;
+        }
         const serviceRolesHeaderComponentParams = {
             filterType: 'ATTRIBUTE',
             enableSorting: true,
@@ -173,6 +184,26 @@ export class ServicesPageService extends ListPageServiceClass {
                 filter: false,
             },
             {
+                colId: 'tags',
+                field: 'tags',
+                headerName: 'Tags',
+                headerComponent: TableColumnDefaultComponent,
+                headerComponentParams: this.headerComponentParams,
+                onCellClicked: (data) => {
+                    if (this.hasSelectedText()) {
+                        return;
+                    }
+                    this.serviceType = '';
+                    this.openAdvanced(data.data.id);
+                },
+                resizable: true,
+                cellRenderer: tagsRenderer,
+                cellClass: 'nf-cell-vert-align tCol',
+                sortable: false,
+                filter: true,
+                width: 260,
+            },
+            {
                 colId: 'createdAt',
                 field: 'createdAt',
                 headerName: 'Created At',
@@ -197,8 +228,46 @@ export class ServicesPageService extends ListPageServiceClass {
     getData(filters?: FilterObj[], sort?: any, page?: any): Promise<any> {
         // we can customize filters or sorting here before moving on...
         this.paging.page = page || this.paging.page;
-        return super.getTableData('services', this.paging, filters, sort)
+        const tagsFilter = filters?.find((filter) => {
+            return filter.columnId === 'tags';
+        });
+        if (!tagsFilter) {
+            return super.getTableData('services', this.paging, filters, sort)
+                .then((results: any) => {
+                    return this.processData(results);
+                });
+        }
+
+        const nonTagsFilters = (filters || []).filter((filter) => {
+            return filter.columnId !== 'tags';
+        });
+        const paging = cloneDeep(this.paging);
+        paging.page = 1;
+        paging.total = -1;
+
+        return super.getTableData('services', paging, nonTagsFilters, sort)
             .then((results: any) => {
+                const filterValue = `${tagsFilter.value || ''}`.toLowerCase().trim();
+                const filteredData = (results?.data || []).filter((item: any) => {
+                    const tags = item?.tags || {};
+                    return Object.entries(tags).some(([key, value]) => {
+                        const keyText = `${key || ''}`.toLowerCase();
+                        const valueText = typeof value === 'object' ? JSON.stringify(value).toLowerCase() : `${value || ''}`.toLowerCase();
+                        return keyText.includes(filterValue) || valueText.includes(filterValue);
+                    });
+                });
+                const offset = (this.paging.page - 1) * this.paging.total;
+                const limit = this.paging.total;
+                results.data = filteredData.slice(offset, offset + limit);
+                if (!results.meta) {
+                    results.meta = {};
+                }
+                if (!results.meta.pagination) {
+                    results.meta.pagination = {};
+                }
+                results.meta.pagination.totalCount = filteredData.length;
+                results.meta.pagination.offset = offset;
+                results.meta.pagination.limit = limit;
                 return this.processData(results);
             });
     }
