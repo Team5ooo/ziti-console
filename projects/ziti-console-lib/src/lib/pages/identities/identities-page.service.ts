@@ -210,7 +210,7 @@ export class IdentitiesPageService extends ListPageServiceClass {
             Object.entries(tagObj).forEach(([key, value]) => {
                 const formattedValue = typeof value === 'object' ? JSON.stringify(value) : `${value}`;
                 const label = `${key}=${formattedValue}`;
-                tags += `<div class="hashtag">${label}</div>`;
+                tags += `<div><div class="hashtag">${label}</div><div class="tag-name">${label}</div></div>`;
             });
             return tags;
         }
