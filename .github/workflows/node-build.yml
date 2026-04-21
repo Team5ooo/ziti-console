@@ -51,11 +51,15 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         run: echo "APP_VERSION=$(jq -r .version package.json)" >> "$GITHUB_ENV"
 
-      - name: Package dist output
+      - name: Build controller SPA artifact
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        run: ./build.sh /zac/
+
+      - name: Package controller SPA artifact
         if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         run: |
-          cd dist
-          zip -r ziti-console-build.zip .
+          cd dist/app-ziti-console
+          zip -r ../../ziti-console.zip *
 
       - name: Create build release
         if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
@@ -64,6 +68,7 @@ jobs:
           tag_name: app-ziti-console-v${{ env.APP_VERSION }}-build.${{ github.run_number }}
           name: app-ziti-console-v${{ env.APP_VERSION }}-build.${{ github.run_number }}
           target_commitish: ${{ github.sha }}
-          prerelease: true
+          prerelease: false
+          make_latest: true
           generate_release_notes: true
-          files: dist/ziti-console-build.zip
+          files: ziti-console.zip
